@@ -130,8 +130,6 @@ class _BaseScreenState extends State<BaseScreen> {
               ],
             ),
           ),
-
-          // Main content area with dynamic allocation
           Expanded(
             child: Container(
               width: double.infinity,
@@ -161,17 +159,17 @@ class _BaseScreenState extends State<BaseScreen> {
                     ),
                   ),
                   SizedBox(
-                    height: 30,
+                    height: 20,
                   ),
                   Center(
                     child: Container(
-                      height: 450, // Set a specific height for the bottom sheet
+                      height: 400, // Set a specific height for the bottom sheet
                       child: Card_Sheet(data1: widget.data),
                     ),
                   ),
-                  SizedBox(
-                    height: 50,
-                  ),
+                  // SizedBox(
+                  //   height: 50,
+                  // ),
                   // GestureDetector(
                   //   onTap: () {
                   //     BottomSheetHelper.showBottomSheet(context, widget.data[1]);

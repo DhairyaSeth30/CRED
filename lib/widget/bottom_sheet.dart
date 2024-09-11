@@ -1,4 +1,4 @@
-import 'package:cred/widget/slider/circular_slider.dart';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'bottom_sheet2.dart';
@@ -105,19 +105,58 @@ import 'custom_button.dart';
 
 
 
-class BottomSheet extends StatelessWidget {
+class BottomSheet extends StatefulWidget {
   final List<dynamic> emiData; // Add a data field to accept data
 
-  const BottomSheet({super.key, required this.emiData}); // Update constructor
+  const BottomSheet({super.key, required this.emiData});
+  @override
+  State<BottomSheet> createState() => _BottomSheetState();
+}
+
+class _BottomSheetState extends State<BottomSheet> {
+  int? selectedIndex; // Track the selected container
+  late List<Color> containerColors; // Store colors for containers
+
+  @override
+  void initState() {
+    super.initState();
+    containerColors = generateContainerColors();
+  }
+
+  List<Color> generateContainerColors() {
+    final List<Color> colorList = [
+      Colors.blue,
+      Colors.brown,
+      Colors.purple,
+      Colors.red,
+      Colors.pink,
+    ];
+
+    Random random = Random(); // For generating random numbers
+    return List.generate(
+      widget.emiData[1]['open_state']['body']['items'].length,
+          (index) => colorList[random.nextInt(colorList.length)],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // // List of colors for random assignment
+    // final List<Color> colorList = [
+    //   Colors.blue,
+    //   Colors.green,
+    //   Colors.orange,
+    //   Colors.purple,
+    //   Colors.red,
+    //   Colors.pink,
+    // ];
+    //
+    // Random random = Random(); // For generating random numbers
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.6, // Set height to 30% of the screen
+      height: MediaQuery.of(context).size.height * 0.7, // Set height to 30% of the screen
       // height: 400,
       width: double.infinity,
-
-      padding: EdgeInsets.all(30.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
@@ -126,41 +165,127 @@ class BottomSheet extends StatelessWidget {
         ),
       ),
       child: Column(
-        // crossAxisAlignment: CrossAxisAlignment.stretch,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 20.0),
+          Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 10.0),
+                Text(
+                  widget.emiData[1]['open_state']['body']['title'],
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500
+                  ),
+                ),
+                SizedBox(height: 5,),
+                Text(
+                  widget.emiData[1]['open_state']['body']['subtitle'],
+                  style: TextStyle(
+                    color: Colors.black,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400
+                  ),
+                ),
+                SizedBox(height: 10,),
+                // Display the Containers in a Row with selection check
+                // Display the Containers in a Row with selection check
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: List.generate(
+                      widget.emiData[1]['open_state']['body']['items'].length,
+                          (index) {
+                        var item = widget.emiData[1]['open_state']['body']['items'][index];
 
-          Text(
-            emiData[1]['open_state']['body']['title'],
-            style: TextStyle(
-              color: Colors.black,
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedIndex = index;
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.all(10),
+                            padding: EdgeInsets.all(10),
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(20.0),
+                              ),
+                              color: containerColors[index], // Use pre-generated color
+                            ),
+                            child: Stack(
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      item['emi'] ?? 'No EMI',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    Text(
+                                      '  for ' +item['duration'] ?? 'No EMI',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 15,),
+                                    Text(
+                                      item['subtitle'] ?? 'No EMI',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                                if (selectedIndex == index) // Show check mark if selected
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 10,),
+                ElevatedButton(
+                  onPressed: () {},
+                  child: Text('Change account'),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 10,),
-          Text(
-            emiData[1]['open_state']['body']['subtitle'],
-            style: TextStyle(
-              color: Colors.black,
+          SizedBox(height: 100,),
+          Expanded(
+            child: CustomButton(
+              text: widget.emiData[1]['cta_text'],
+              onPressed: () {
+                BottomSheetHelper2.showSecondBottomSheet(context, widget.emiData);
+              },
             ),
-          ),
-          SizedBox(height: 20,),
-          Container(
-            height: 150,
-            width: 150,
-            color: Colors.blue,
-          ),
-          SizedBox(height: 20,),
-          ElevatedButton(
-              onPressed: () {},
-              child: Text('Change account'),
-          ),
-          SizedBox(height: 25,),
-          CustomButton(
-            text: emiData[1]['cta_text'],
-            onPressed: () {
-              BottomSheetHelper2.showSecondBottomSheet(context, emiData);
-            },
           ),
         ],
       ),
