@@ -107,7 +107,7 @@ class _BottomSheet2State extends State<BottomSheet2> {
               ],
             ),
           ),
-          SizedBox(height: 130,),
+          SizedBox(height: 40,),
           Expanded(
             child: CustomButton(
               text: widget.emiData[2]['cta_text'],
