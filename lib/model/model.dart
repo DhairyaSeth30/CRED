@@ -1,3 +1,22 @@
+import 'dart:math';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+
+class ApiResponse {
+  List<Item>? items;
+
+  ApiResponse({this.items});
+
+  factory ApiResponse.fromJson(Map<String, dynamic> json) {
+    return ApiResponse(
+      items: json['items'] != null
+          ? List<Item>.from(json['items'].map((item) => Item.fromJson(item)))
+          : null,
+    );
+  }
+}
+
 class Item {
   OpenState? openState;
   ClosedState? closedState;
@@ -7,89 +26,21 @@ class Item {
 
   factory Item.fromJson(Map<String, dynamic> json) {
     return Item(
-      openState: json['open_state'] != null
-          ? OpenState.fromJson(json['open_state'])
-          : null,
-      closedState: json['closed_state'] != null
-          ? ClosedState.fromJson(json['closed_state'])
-          : null,
+      openState: json['open_state'] != null ? OpenState.fromJson(json['open_state']) : null,
+      closedState: json['closed_state'] != null ? ClosedState.fromJson(json['closed_state']) : null,
       ctaText: json['cta_text'],
     );
   }
 }
 
 class OpenState {
-  OpenBody? body;
+  Body? body;
 
   OpenState({this.body});
 
   factory OpenState.fromJson(Map<String, dynamic> json) {
     return OpenState(
-      body: json['body'] != null ? OpenBody.fromJson(json['body']) : null,
-    );
-  }
-}
-
-class OpenBody {
-  String? title;
-  String? subtitle;
-  CardDetail? card;
-  List<ItemDetail>? items;
-  String? footer;
-
-  OpenBody({this.title, this.subtitle, this.card, this.items, this.footer});
-
-  factory OpenBody.fromJson(Map<String, dynamic> json) {
-    var itemsList = <ItemDetail>[];
-    if (json['items'] != null) {
-      json['items'].forEach((v) {
-        itemsList.add(ItemDetail.fromJson(v));
-      });
-    }
-    return OpenBody(
-      title: json['title'],
-      subtitle: json['subtitle'],
-      card: json['card'] != null ? CardDetail.fromJson(json['card']) : null,
-      items: itemsList,
-      footer: json['footer'],
-    );
-  }
-}
-
-class CardDetail {
-  String? header;
-  String? description;
-  int? maxRange;
-  int? minRange;
-
-  CardDetail({this.header, this.description, this.maxRange, this.minRange});
-
-  factory CardDetail.fromJson(Map<String, dynamic> json) {
-    return CardDetail(
-      header: json['header'],
-      description: json['description'],
-      maxRange: json['max_range'],
-      minRange: json['min_range'],
-    );
-  }
-}
-
-class ItemDetail {
-  String? emi;
-  String? duration;
-  String? title;
-  String? subtitle;
-  String? tag;
-
-  ItemDetail({this.emi, this.duration, this.title, this.subtitle, this.tag});
-
-  factory ItemDetail.fromJson(Map<String, dynamic> json) {
-    return ItemDetail(
-      emi: json['emi'],
-      duration: json['duration'],
-      title: json['title'],
-      subtitle: json['subtitle'],
-      tag: json['tag'],
+      body: json['body'] != null ? Body.fromJson(json['body']) : null,
     );
   }
 }
@@ -102,6 +53,66 @@ class ClosedState {
   factory ClosedState.fromJson(Map<String, dynamic> json) {
     return ClosedState(
       body: json['body'] != null ? ClosedBody.fromJson(json['body']) : null,
+    );
+  }
+}
+
+class Body {
+  String? title;
+  String? subtitle;
+  CardData? card;
+  List<ItemData>? items;
+  String? footer;
+
+  Body({this.title, this.subtitle, this.card, this.items, this.footer});
+
+  factory Body.fromJson(Map<String, dynamic> json) {
+    return Body(
+      title: json['title'],
+      subtitle: json['subtitle'],
+      card: json['card'] != null ? CardData.fromJson(json['card']) : null,
+      items: json['items'] != null ? List<ItemData>.from(json['items'].map((item) => ItemData.fromJson(item))) : null,
+      footer: json['footer'],
+    );
+  }
+}
+
+class CardData {
+  String? header;
+  String? description;
+  int? maxRange;
+  int? minRange;
+
+  CardData({this.header, this.description, this.maxRange, this.minRange});
+
+  factory CardData.fromJson(Map<String, dynamic> json) {
+    return CardData(
+      header: json['header'],
+      description: json['description'],
+      maxRange: json['max_range'],
+      minRange: json['min_range'],
+    );
+  }
+}
+
+class ItemData {
+  String? emi;
+  String? duration;
+  String? title;
+  dynamic subtitle;
+  String? tag;
+  final Color color; // Add this field
+
+  ItemData({this.emi, this.duration, this.title, this.subtitle, this.tag,required this.color});
+
+  factory ItemData.fromJson(Map<String, dynamic> json) {
+    return ItemData(
+      emi: json['emi'],
+      duration: json['duration'],
+      title: json['title'],
+      subtitle: json['subtitle'],
+      tag: json['tag'],
+      color: Colors.primaries[Random().nextInt(Colors.primaries.length)], // G
     );
   }
 }

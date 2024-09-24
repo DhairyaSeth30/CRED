@@ -1,242 +1,384 @@
-// import 'package:cred/widget/bottom_sheet.dart';
-// import 'package:flutter/material.dart';
-//
-// class BaseScreen extends StatefulWidget {
-//   final List<dynamic> data; // Declare the data field
-//   const BaseScreen({super.key, required this.data});
-//
-//   @override
-//   State<BaseScreen> createState() => _BaseScreenState();
-// }
-//
-// class _BaseScreenState extends State<BaseScreen> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Color.fromRGBO(46, 44, 44, 100),
-//       body: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Container(
-//             padding: EdgeInsets.only(top: 60, left: 30, right: 30, bottom: 30),
-//             child:
-//                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-//               Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                 children: [
-//                   Icon(
-//                     Icons.cancel,
-//                     size: 30.0,
-//                     color: Colors.grey,
-//                   ),
-//                   Icon(
-//                     Icons.help,
-//                     size: 30.0,
-//                     color: Colors.grey,
-//                   ),
-//                 ],
-//               ),
-//               SizedBox(
-//                 height: 10.0,
-//               ),
-//             ]),
-//           ),
-//           Expanded(
-//             child: Container(
-//               width: double.infinity,
-//               padding: EdgeInsets.symmetric(horizontal: 20),
-//               decoration: BoxDecoration(
-//                 color: Color.fromRGBO(46, 44, 44, 50),
-//                 borderRadius: BorderRadius.only(
-//                   topLeft: Radius.circular(20.0),
-//                   topRight: Radius.circular(20.0),
-//                 ),
-//               ),
-//               child: Column(
-//                 children: [
-//                   ListTile(
-//                     title: Text(
-//                       widget.data[0]['open_state']['body']['title'],
-//                       style: TextStyle(
-//                         color: Colors.white,
-//                       ),
-//                     ),
-//                     subtitle: Text(
-//                       widget.data[0]['open_state']['body']['subtitle'],
-//                       style: TextStyle(
-//                         color: Colors.white,
-//                       ),
-//                     ),
-//                   ),
-//                   const Bottom_Sheet(),
-//                 ],
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-import 'package:cred/widget/card.dart';
+import 'dart:math';
+import 'package:cred/widget/collapsed_widget.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import '../widget/bottom_sheet.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
+import 'package:sleek_circular_slider/sleek_circular_slider.dart';
+import '../riverpod/base_state.dart';
+import '../riverpod/data_provider.dart';
+import '../widget/bottom_sheet1.dart';
+import '../widget/bottom_sheet2.dart';
 import '../widget/custom_button.dart';
+import 'package:cred/model/model.dart';
 
-class BaseScreen extends StatefulWidget {
-  final List<dynamic> data; // Declare the data field
-  const BaseScreen({super.key, required this.data});
+import '../widget/emi_selectno.dart';
+
+class BaseScreen extends ConsumerStatefulWidget {
+  const BaseScreen({super.key});
 
   @override
-  State<BaseScreen> createState() => _BaseScreenState();
+  ConsumerState<BaseScreen> createState() => _BaseScreenState();
 }
 
-class _BaseScreenState extends State<BaseScreen> {
+class _BaseScreenState extends ConsumerState<BaseScreen> with TickerProviderStateMixin {
+  bool isBottomSheetOpen = false;
+
+  AnimationController? _controller;
+  ScrollController? _scrollController;
+
+  int? selectedIndex; // Track the selected container
+  List<Color> containerColors = [];
+  bool isSelected = false;
+  bool isBottomSheet2Open = false;
+  double creditAmount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    // Initiate data fetching
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(dataNotifierProvider.notifier)
+          .fetchItems('https://api.mocklets.com/p6764/test_mint');
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  final NumberFormat _formatter = NumberFormat('#,##,###');
+
+  double _getMonthlyRate(double amount) {
+    return (amount * 0.0104);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // BottomSheet bottomSheet = BottomSheet(); // Create an instance of the Bottom_Sheet
+    final state = ref.watch(dataNotifierProvider);
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Color(0XFF280038FF),
+        body: Builder(
+          builder: (context) {
+            // Handle different states
+            if (state.status == DataStatus.loading) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            } else if (state.status == DataStatus.error) {
+              return Center(
+                child: Text('Error: ${state.message ?? 'Unknown error'}'),
+              );
+            } else if (state.status == DataStatus.success && state.data != null) {
+              return _getStack(context, state.data?.items?.first, state.data);
+            } else {
+              return Center(
+                child: Text('Press button to fetch items'),
+              );
+            }
+          },
+        ),
+        // bottomSheet: BottomSheetWidget(
+        //   controller: _controller!,
+        //   data: state.data?.items?[1],
+        //   onButtonPressed: () {},
+        // ),
+      ),
+    );
+  }
 
-    return Scaffold(
-      backgroundColor: Color.fromRGBO(46, 44, 44, 100),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top section with icons
-          Container(
-            padding: EdgeInsets.only(top: 60, left: 30, right: 30, bottom: 30),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Stack _getStack(BuildContext context, Item? item, ApiResponse? response) {
+    final bottomSheetState = ref.watch(bottomSheetStateProvider);
+    return Stack(
+      children: [
+        Container(
+          height: 50.h,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            // color: Colors.black38
+            color: Colors.black38
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      Icons.cancel,
-                      size: 30.0,
-                      color: Colors.grey,
-                    ),
-                    Icon(
-                      Icons.help,
-                      size: 30.0,
-                      color: Colors.grey,
-                    ),
-                  ],
+                Icon(
+                    Icons.close,
+                  color: Colors.white,
                 ),
-                SizedBox(
-                  height: 10.0,
+                Icon(
+                    Icons.help,
+                  color: Colors.white,
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              // height: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: Color.fromRGBO(46, 44, 44, 50),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20.0),
-                  topRight: Radius.circular(20.0),
+        ),
+        bottomSheetState
+            ? CreditInfoWidget(
+                key1: item?.closedState?.body?.key1,
+                value1: _formatter.format(creditAmount),
+                key2: null,
+                value2: null)
+            : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 60,
+                    ),
+                    Text(
+                      item?.openState?.body?.title ?? 'Title',
+                      style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      item?.openState?.body?.subtitle ?? 'Subtitle',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: ListView(
-                children: [
-                  ListTile(
-                    title: Text(
-                      widget.data[0]['open_state']['body']['title'],
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
-                    subtitle: Text(
-                      widget.data[0]['open_state']['body']['subtitle'],
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 20,
-                  ),
-                  Center(
-                    child: Container(
-                      height: 400, // Set a specific height for the bottom sheet
-                      child: Card_Sheet(data1: widget.data),
-                    ),
-                  ),
-                  // SizedBox(
-                  //   height: 50,
-                  // ),
-                  // GestureDetector(
-                  //   onTap: () {
-                  //     BottomSheetHelper.showBottomSheet(context, widget.data[1]);
-                  //   },
-                  //   child: Container(
-                  //     width: double.infinity,
-                  //     height: 90,
-                  //     padding: EdgeInsets.symmetric(horizontal: 20),
-                  //     decoration: BoxDecoration(
-                  //       color: Colors.blue,
-                  //       borderRadius: BorderRadius.only(
-                  //         topLeft: Radius.circular(20.0),
-                  //         topRight: Radius.circular(20.0),
-                  //       ),
-                  //     ),
-                  //     child: const Center(
-                  //         child: Text(
-                  //       'Proceed to EMI Selection',
-                  //       style: TextStyle(
-                  //         fontSize: 20,
-                  //         color: Colors.white,
-                  //       ),
-                  //     )),
-                  //   ),
-                  // ),
 
-                ],
-              ),
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            width: MediaQuery.of(context).size.width * 0.85,
+            height: MediaQuery.of(context).size.height * 0.46,
+            // Adjusted height
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SleekCircularSlider(
+                  min: item?.openState?.body?.card?.minRange?.toDouble() ?? 0.0,
+                  max: item?.openState?.body?.card?.maxRange?.toDouble() ?? 0.0,
+                  initialValue: 15000,
+                  appearance: CircularSliderAppearance(
+                    customWidths: CustomSliderWidths(
+                      trackWidth: 15,
+                      progressBarWidth: 15,
+                      handlerSize: 10,
+                    ),
+                    infoProperties: InfoProperties(
+                      modifier: (double value) {
+                        return ''; // We will handle custom text inside the slider below
+                      },
+                    ),
+                    startAngle: 270,
+                    angleRange: 360,
+                    size: 200,
+                    customColors: CustomSliderColors(
+                      trackColor: Colors.grey[300]!,
+                      progressBarColors: [Colors.orange, Colors.deepOrange],
+                      hideShadow: true,
+                    ),
+                  ),
+                  onChange: (double value) {
+                    setState(() {
+                      creditAmount = value;
+                    });
+                  },
+                  innerWidget: (double value) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          item?.openState?.body?.card?.header ?? '',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        // Credit amount with dotted underline
+                        Text(
+                          '₹ ${_formatter.format(creditAmount)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            decoration: TextDecoration.underline,
+                            decorationStyle: TextDecorationStyle.dotted,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        // Monthly interest rate
+                        Text(
+                          item?.openState?.body?.card?.description ?? '',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  item?.openState?.body?.footer ?? '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-          CustomButton(
-            text: 'Proceed to EMI Selection',
-            onPressed: () {
-              // Your button press logic
-              BottomSheetHelper.showBottomSheet(context, widget.data);
-            },
-          ),
-        ],
-      ),
+        ),
+
+        // Bottom Button
+        CustomButton(
+          text: item?.ctaText ?? '',
+          onPressed: () {
+            showCustomBottomSheet(
+                context, response?.items?[1], response); //<-------->
+          },
+        ),
+      ],
     );
   }
+
+  List<Color> generateContainerColors(List<Item>? items) {
+    final List<Color> colorList = [
+      Colors.indigo,
+      Colors.brown,
+      Colors.purple,
+      Colors.red,
+      Colors.pink,
+    ];
+
+    Random random = Random();
+    return List.generate(
+      items?.length ?? 0,
+      (index) => colorList[random.nextInt(colorList.length)],
+    );
+  }
+
+  void showCustomBottomSheet(
+      BuildContext context, Item? data, ApiResponse? response) {
+    ref.watch(bottomSheetStateProvider.notifier).openBottomSheet();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Allows customization of height
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(0, 9, 40, 1),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height *
+                  0.8, // Max height is 50% of screen height
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  //BottomSheet 1
+                  child: BottomSheetWidget(
+                    data: data,
+                    onButtonPressed: () {
+                      // Handle button press action
+                      showCustomBottomSheet2(context, response?.items?[2]);
+                    },
+                    onChangeAccount: () {
+                      // Handle change account action
+                      print("Change Account Pressed");
+                    },
+                    onPressedEmi: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      ref.watch(bottomSheetStateProvider.notifier).closeBottomSheet();
+    });
+  }
+
+  // <<<<<<<<<<<<<<<<<-------------------------------------->>>>>>>>>>>>>
+
+  // <-------Custom BottomSheet 2------->
+
+  void showCustomBottomSheet2(BuildContext context, Item? data) {
+    ref.watch(bottomSheetStateProvider2.notifier).openBottomSheet();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Allows customization of height
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(0, 9, 40, 1),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height *
+                  0.6, // Max height is 50% of screen height
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  // BottomSheet 2
+                  child: BottomSheetWidget2(
+                    data: data,
+                    onButtonPressed: () {
+                      // Handle button press action
+                      print("button 2 pressed");
+                    },
+                    onChangeAccount: () {
+                      // Handle change account action
+                      print("Change Account Pressed");
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      ref.watch(bottomSheetStateProvider2.notifier).closeBottomSheet();
+    });
+  }
 }
-
-// return ListView.builder(
-//   itemCount: data.length,
-//   itemBuilder: (context, index) {
-//     final item = data[index];
-//     return ListTile(
-//       title: Text(item['open_state']['body']['title']),
-//       subtitle: Text(item['open_state']['body']['subtitle']),
-//     );
-//   },
-// );
-
-// child: ListView.builder(
-//   itemCount: widget.data.length,
-//   itemBuilder: (context, index) {
-//     final item = widget.data[index];
-//     return ListTile(
-//       title: Text(item['open_state']['body']['title']),
-//       subtitle: Text(item['open_state']['body']['subtitle']),
-//     );
-//   },
-// ),
-
-
-
-
-
-// BottomSheetHelper.showBottomSheet(context);
